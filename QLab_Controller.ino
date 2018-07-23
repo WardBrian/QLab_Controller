@@ -19,6 +19,11 @@ int leds[NUM_BUTTONS] = {A0, A1, A2, A3, A4, A5};
 
 Bounce buttons[NUM_BUTTONS];
 
+// Stores the time when the buttons were last pushed. Only used for repeat commands
+unsigned long buttonPressTimeStamps[NUM_BUTTONS];
+// Flag for if the button has been repeated. Only used on repeat buttons
+bool hasRepeated[NUM_BUTTONS];
+
 void setup() {
   for (int i = 0; i < NUM_BUTTONS; i++) {
     // Turn on LEDs
@@ -39,11 +44,27 @@ void loop() {
     buttons[i].update();
   }
 
-  // If a button fell (was pushed), send a Note On
+  // If a button fell (was pushed), store the time, and send a Note On
   for (int i = 0; i < NUM_BUTTONS; i++) {
     if (buttons[i].fell()) {
+      buttonPressTimeStamps[i] = millis();
+      hasRepeated[i] = false;
       noteOn(i + 1);
       MidiUSB.flush();
+    }
+  }
+  
+  // Hard-coded repeat for UP and DOWN
+  for(int i = 3; i < NUM_BUTTONS; i+=2){
+    if(buttons[i].read() == LOW){
+      // Mimic keyboard repeating by waiting for 1 second, then repeating 4 times per second
+      unsigned long pressDuration =  millis() - buttonPressTimeStamps[i];
+      if((hasRepeated[i] || pressDuration >= 750) && (pressDuration >= 85)){
+        buttonPressTimeStamps[i] = millis();
+        hasRepeated[i] = true;
+        noteOn(i + 1);
+        MidiUSB.flush();
+      }
     }
   }
 }
