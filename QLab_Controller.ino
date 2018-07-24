@@ -3,27 +3,49 @@
   Author: Brian Ward
   Updated: JuLY 17, 2018
 */
-// Libraries
+
+/*
+ * Libraries
+ */
 #include <Bounce2.h>
 #include <MIDIUSB.h>
 
-// Constants
+/* 
+ * Constants 
+ */
 #define CHANNEL 0x00 // MIDI Channel 0 (or 1, depending on standard)
 #define VELOCITY 0x7F
 #define NUM_BUTTONS 6
 
+/* 
+ * Global Variables 
+ */
+
+// Stores the pin numbers for the buttons and LEDs
 // IMPORTANT: The order of buttonPins below determines which note each button corresponds to. The first entry sends Note 1, etc.
 int buttonPins[NUM_BUTTONS] = {6, 7, 8, 9, 10, 11};
-
 int leds[NUM_BUTTONS] = {A0, A1, A2, A3, A4, A5};
 
+/// Stores the Bounce library button objects
 Bounce buttons[NUM_BUTTONS];
 
-// Stores the time when the buttons were last pushed. Only used for repeat commands
+// Stores the time when the buttons were last pushed. May be possible to replace with Bounce.duration()
 unsigned long buttonPressTimeStamps[NUM_BUTTONS];
-// Flag for if the button has been repeated. Only used on repeat buttons
+// Stores a flag for if the button has been repeated. Only used on repeat buttons
 bool hasRepeated[NUM_BUTTONS];
 
+/*
+ * Functions
+ */
+void noteOn(byte pitch) {
+  // Construct a Note On (0x09) packet on Channel 1 (0x00) with Velocity 127 (0x7F)
+  midiEventPacket_t noteOn = {0x09, 0x90 | CHANNEL, pitch, VELOCITY};
+  MidiUSB.sendMIDI(noteOn);
+}
+
+/*
+ * Begin built-in Arduino functions
+ */
 void setup() {
   for (int i = 0; i < NUM_BUTTONS; i++) {
     // Turn on LEDs
@@ -54,10 +76,10 @@ void loop() {
     }
   }
   
-  // Hard-coded repeat for UP and DOWN
+  // Any buttons accessed by this for loop will send repeats when held. For us, we only want i=3,5
   for(int i = 3; i < NUM_BUTTONS; i+=2){
     if(buttons[i].read() == LOW){
-      // Mimic keyboard repeating by waiting for 1 second, then repeating 4 times per second
+      // Mimic keyboard repeating by waiting for ~ 1 second, then repeating ~ 10 times per second
       unsigned long pressDuration =  millis() - buttonPressTimeStamps[i];
       if((hasRepeated[i] || pressDuration >= 750) && (pressDuration >= 85)){
         buttonPressTimeStamps[i] = millis();
@@ -69,11 +91,6 @@ void loop() {
   }
 }
 
-void noteOn(byte pitch) {
-  // Construct a Note On (0x09) packet on Channel 1 (0x00) with Velocity 127 (0x7F)
-  midiEventPacket_t noteOn = {0x09, 0x90 | CHANNEL, pitch, VELOCITY};
-  MidiUSB.sendMIDI(noteOn);
-}
 
 
 
